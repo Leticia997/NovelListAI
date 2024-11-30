@@ -1,72 +1,126 @@
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 
-// 玩家角色组件
-const PlayerSprite: React.FC = () => (
-  <svg width="48" height="48" viewBox="0 0 48 48">
-    <circle cx="24" cy="24" r="20" fill="#9F7AEA" />
-    <circle cx="18" cy="20" r="4" fill="white" />
-    <circle cx="30" cy="20" r="4" fill="white" />
-    <rect x="24" y="6" width="6" height="16" fill="#7C3AED" 
-          transform="rotate(0, 24, 24)" />
-  </svg>
-);
-
-// 敌人组件
-const EnemySprite: React.FC<{ type: string }> = ({ type }) => {
+// 敌人类型和图标
+const EnemySprite = ({ type, size = 40 }) => {
   switch (type) {
     case 'pan':
       return (
-        <svg width="32" height="32" viewBox="0 0 32 32">
-          <rect x="4" y="4" width="24" height="6" fill="#888" />
-          <rect x="8" y="10" width="16" height="4" fill="#666" />
+        <svg width={size} height={size} viewBox="0 0 24 24">
+          <path d="M4,12 h16 v4 h-16 z" fill="#666" />
+          <path d="M3,16 h18 v2 h-18 z" fill="#888" />
+          <path d="M18,12 v-6 h2 v6 z" fill="#666" />
         </svg>
       );
     case 'bomb':
       return (
-        <svg width="32" height="32" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="12" fill="#333" />
-          <rect x="14" y="4" width="4" height="6" fill="#F00" />
+        <svg width={size} height={size} viewBox="0 0 24 24">
+          <circle cx="12" cy="14" r="8" fill="#333" />
+          <path d="M11,6 h2 v4 h-2 z" fill="#666" />
+          <path d="M10,4 h4 v2 h-4 z" fill="#F00" />
         </svg>
       );
-    default: // boss
+    case 'pancake':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40">
-          <rect x="4" y="4" width="32" height="32" fill="#EF4444" rx="4" />
+        <svg width={size} height={size} viewBox="0 0 24 24">
+          <ellipse cx="12" cy="12" rx="10" ry="4" fill="#FFD700" />
+          <ellipse cx="12" cy="11" rx="8" ry="3" fill="#FFA500" />
         </svg>
       );
+    default:
+      return null;
   }
 };
 
-// 水滴组件
-const WaterDropSprite: React.FC = () => (
+// 水滴形状的炮弹
+const SpitSprite = () => (
   <svg width="16" height="16" viewBox="0 0 16 16">
-    <path
-      d="M8,2 C8,2 3,7 3,10 C3,13 5,14 8,14 C11,14 13,13 13,10 C13,7 8,2 8,2 Z"
-      fill="rgba(152, 245, 255, 0.8)"
-    />
+    <path d="M8,2 C8,2 2,8 2,11 C2,14 5,15 8,15 C11,15 14,14 14,11 C14,8 8,2 8,2 Z" 
+          fill="rgba(152, 245, 255, 0.8)" />
   </svg>
 );
 
-// 主游戏组件
-const AlpacaGame: React.FC = () => {
-  // 游戏状态
+// 草泥马组件
+const PixelAlpaca = ({ color = "#9F7AEA" }) => (
+  <svg width="64" height="64" viewBox="0 0 32 32">
+    <path d="M8,16 h16 v8 h-16 z" fill={color} />
+    <path d="M10,24 h12 v2 h-12 z" fill={color} />
+    <path d="M18,10 h4 v6 h-4 z" fill={color} />
+    <path d="M17,12 h2 v4 h-2 z" fill={color} />
+    <path d="M20,8 h3 v2 h-3 z" fill={color} />
+    <path d="M16,6 h8 v4 h-8 z" fill={color} />
+    <path d="M17,4 h2 v2 h-2 z M21,4 h2 v2 h-2 z" fill={color} />
+    <path d="M10,26 h4 v4 h-4 z M18,26 h4 v4 h-4 z" fill={color} />
+    <path d="M18,8 h2 v2 h-2 z" fill="#FFFFFF" />
+    <path d="M22,9 h1 v1 h-1 z" fill="#FF69B4" />
+    <path d="M23,8 h2 v2 h-2 z" fill="#F9A8D4" />
+    <path d="M19,5 h1 v1 h-1 z M20,3 h1 v1 h-1 z" fill={color} />
+  </svg>
+);
+
+const TankBattle = () => {
+  const [score, setScore] = useState(0);
+  const [health, setHealth] = useState(100);
   const [gameStarted, setGameStarted] = useState(false);
   const [position, setPosition] = useState({ x: 20, y: 340 });
   const [rotation, setRotation] = useState(0);
-  const [bullets, setBullets] = useState<any[]>([]);
-  const [enemies, setEnemies] = useState<any[]>([]);
-  const [score, setScore] = useState(0);
-  const [health, setHealth] = useState(100);
-  const [effects, setEffects] = useState<any[]>([]);
+  const [bullets, setBullets] = useState([]);
+  const [enemies, setEnemies] = useState([]);
+  const [effects, setEffects] = useState([]);
+  const [lastShotTime, setLastShotTime] = useState(0);
 
-  // 游戏常量
-  const moveSpeed = 8;
-  const bulletSpeed = 12;
-  const shootCooldown = 150;
-  const enemyTypes = ['pan', 'bomb', 'boss'];
+  const enemyTypes = ['pan', 'bomb', 'pancake'];
+  const shootCooldown = 200;
+  const moveSpeed = 5;
+  const bulletSpeed = 8;
 
-  // 击中效果
-  const addHitEffect = (x: number, y: number) => {
+  const shoot = () => {
+    const now = Date.now();
+    if (now - lastShotTime < shootCooldown) return;
+
+    let mouthOffsetX = 46;
+    let mouthOffsetY = 16;
+
+    const angleRad = rotation * (Math.PI / 180);
+    const rotatedX = mouthOffsetX * Math.cos(angleRad) - mouthOffsetY * Math.sin(angleRad);
+    const rotatedY = mouthOffsetX * Math.sin(angleRad) + mouthOffsetY * Math.cos(angleRad);
+
+    const bulletX = position.x + rotatedX;
+    const bulletY = position.y + rotatedY;
+
+    const newBullet = {
+      x: bulletX,
+      y: bulletY,
+      dx: Math.cos((rotation - 90) * (Math.PI / 180)),
+      dy: Math.sin((rotation - 90) * (Math.PI / 180)),
+      id: now
+    };
+
+    setBullets(prev => [...prev, newBullet]);
+    setLastShotTime(now);
+  };
+
+  useEffect(() => {
+    if (!gameStarted) return;
+
+    const spawnEnemy = () => {
+      const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+      const x = Math.random() * 700 + 50;
+      const enemy = {
+        id: Date.now(),
+        type,
+        x,
+        y: -50,
+        speed: 2 + Math.random() * 2
+      };
+      setEnemies(prev => [...prev, enemy]);
+    };
+
+    const intervalId = setInterval(spawnEnemy, 2000);
+    return () => clearInterval(intervalId);
+  }, [gameStarted]);
+
+  const addHitEffect = (x, y) => {
     const effect = {
       id: Date.now(),
       x,
@@ -80,27 +134,88 @@ const AlpacaGame: React.FC = () => {
     }, 500);
   };
 
-  // 键盘控制
   useEffect(() => {
     if (!gameStarted) return;
 
-    const handleKeyPress = (e: KeyboardEvent) => {
+    const checkCollisions = () => {
+      bullets.forEach(bullet => {
+        enemies.forEach(enemy => {
+          const dx = bullet.x - enemy.x;
+          const dy = bullet.y - enemy.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < 30) {
+            setBullets(prev => prev.filter(b => b.id !== bullet.id));
+            setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+            addHitEffect(enemy.x, enemy.y);
+            setScore(prev => prev + 100);
+          }
+        });
+      });
+
+      enemies.forEach(enemy => {
+        const dx = position.x + 32 - enemy.x;
+        const dy = position.y + 32 - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 40) {
+          setHealth(prev => Math.max(0, prev - 10));
+          setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+        }
+      });
+    };
+
+    const intervalId = setInterval(checkCollisions, 16);
+    return () => clearInterval(intervalId);
+  }, [gameStarted, bullets, enemies, position]);
+
+  useEffect(() => {
+    if (!gameStarted) return;
+
+    const moveEnemies = () => {
+      setEnemies(prev => prev
+        .map(enemy => ({
+          ...enemy,
+          y: enemy.y + enemy.speed
+        }))
+        .filter(enemy => enemy.y < 400)
+      );
+    };
+
+    const intervalId = setInterval(moveEnemies, 16);
+    return () => clearInterval(intervalId);
+  }, [gameStarted]);
+
+  useEffect(() => {
+    if (!gameStarted || bullets.length === 0) return;
+
+    const intervalId = setInterval(() => {
+      setBullets(prev => prev
+        .map(bullet => ({
+          ...bullet,
+          x: bullet.x + bullet.dx * bulletSpeed,
+          y: bullet.y + bullet.dy * bulletSpeed
+        }))
+        .filter(bullet => 
+          bullet.x >= 0 && 
+          bullet.x <= 800 && 
+          bullet.y >= 0 && 
+          bullet.y <= 400
+        )
+      );
+    }, 16);
+
+    return () => clearInterval(intervalId);
+  }, [gameStarted, bullets.length]);
+
+  useEffect(() => {
+    if (!gameStarted) return;
+
+    const handleKeyPress = (e) => {
       const key = e.key.toLowerCase();
       
       if (key === ' ') {
-        const centerX = position.x + 24;
-        const centerY = position.y + 24;
-        const angleRad = (rotation - 90) * (Math.PI / 180);
-        const offsetX = Math.cos(angleRad) * 28;
-        const offsetY = Math.sin(angleRad) * 28;
-        
-        setBullets(prev => [...prev, {
-          x: centerX + offsetX,
-          y: centerY + offsetY,
-          dx: Math.cos(angleRad),
-          dy: Math.sin(angleRad),
-          id: Date.now()
-        }]);
+        shoot();
         return;
       }
 
@@ -111,126 +226,38 @@ const AlpacaGame: React.FC = () => {
         switch (key) {
           case 'w':
             newY = Math.max(0, prev.y - moveSpeed);
-            setRotation(-90);
             break;
           case 's':
             newY = Math.min(340, prev.y + moveSpeed);
-            setRotation(90);
             break;
           case 'a':
             newX = Math.max(0, prev.x - moveSpeed);
-            setRotation(180);
             break;
           case 'd':
             newX = Math.min(720, prev.x + moveSpeed);
-            setRotation(0);
+            break;
+          default:
             break;
         }
 
         return { x: newX, y: newY };
       });
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameStarted, position, rotation]);
-
-  // 敌人生成
-  useEffect(() => {
-    if (!gameStarted) return;
-
-    const createEnemy = () => {
-      const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-      setEnemies(prev => [...prev, {
-        id: Date.now(),
-        type,
-        x: Math.random() * 700 + 50,
-        y: -30,
-        speed: 2 + Math.random() * 2
-      }]);
-    };
-
-    const spawnInterval = setInterval(createEnemy, 2000);
-    const moveInterval = setInterval(() => {
-      setEnemies(prev => 
-        prev
-          .map(enemy => ({
-            ...enemy,
-            y: enemy.y + enemy.speed
-          }))
-          .filter(enemy => {
-            if (enemy.y > 400) {
-              setHealth(prev => Math.max(0, prev - 10));
-              return false;
-            }
-            return true;
-          })
-      );
-    }, 16);
-
-    return () => {
-      clearInterval(spawnInterval);
-      clearInterval(moveInterval);
-    };
-  }, [gameStarted]);
-
-  // 碰撞检测
-  useEffect(() => {
-    if (!gameStarted) return;
-
-    const checkCollisions = () => {
-      setBullets(prevBullets => {
-        let newBullets = [...prevBullets];
-        
-        setEnemies(prevEnemies => {
-          let newEnemies = [...prevEnemies];
-          
-          bullets.forEach(bullet => {
-            enemies.forEach((enemy, index) => {
-              const dx = bullet.x - enemy.x;
-              const dy = bullet.y - enemy.y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              
-              if (distance < 24) {
-                newBullets = newBullets.filter(b => b.id !== bullet.id);
-                newEnemies[index] = null;
-                addHitEffect(enemy.x, enemy.y);
-                setScore(prev => prev + 100);
-              }
-            });
-          });
-
-          return newEnemies.filter(enemy => enemy !== null);
-        });
-
-        return newBullets;
-      });
-
-      // 检查玩家碰撞
-      enemies.forEach(enemy => {
-        const dx = position.x + 24 - enemy.x;
-        const dy = position.y + 24 - enemy.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 32) {
-          setHealth(prev => Math.max(0, prev - 20));
-          setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+      
+      setRotation(prev => {
+        switch (key) {
+          case 'w': return -90;
+          case 's': return 90;
+          case 'a': return 180;
+          case 'd': return 0;
+          default: return prev;
         }
       });
     };
 
-    const gameLoop = setInterval(checkCollisions, 16);
-    return () => clearInterval(gameLoop);
-  }, [gameStarted, bullets, enemies, position]);
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameStarted]);
 
-  // 游戏结束检测
-  useEffect(() => {
-    if (health <= 0) {
-      setGameStarted(false);
-    }
-  }, [health]);
-
-  // 开始游戏
   const startGame = () => {
     setGameStarted(true);
     setScore(0);
@@ -244,60 +271,64 @@ const AlpacaGame: React.FC = () => {
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-4">
       {!gameStarted ? (
-        <div className="bg-gradient-to-br from-purple-900 to-purple-800 text-white rounded-lg p-8">
-          <div className="flex flex-col items-center justify-center space-y-6">
+        <Card className="bg-gradient-to-br from-purple-900 to-purple-800 text-white">
+          <CardContent className="flex flex-col items-center justify-center space-y-6 p-12">
             <h1 className="text-4xl font-bold">草泥马大作战</h1>
             <p className="text-center text-lg">
-              用WASD移动，空格键发射水滴！<br/>
-              击中敌人得分，小心不要让敌人碰到你！
+              躲避平底锅、炸弹和圆饼的攻击！<br/>
+              用唾液击退敌人，获得高分！
             </p>
             <button
               onClick={startGame}
               className="px-8 py-4 bg-purple-600 hover:bg-purple-500 rounded-lg font-semibold"
             >
-              {health <= 0 ? '重新开始' : '开始游戏'}
+              开始游戏
             </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-gradient-to-r from-purple-900 to-purple-800 p-4 rounded-xl">
-            <div className="flex items-center space-x-4">
-              <div className="w-40 h-4 bg-gray-700 rounded-full overflow-hidden">
+          <div className="flex justify-between items-center bg-gradient-to-r from-purple-900 to-purple-800 p-6 rounded-xl">
+            <div className="flex items-center space-x-6">
+              <div className="scale-75"><PixelAlpaca /></div>
+              <div className="w-40 h-5 bg-purple-950 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-red-500 to-red-600 transition-all"
                   style={{ width: `${health}%` }}
                 />
               </div>
-              <span className="text-white font-bold">{health}%</span>
             </div>
-            <span className="text-2xl font-bold text-yellow-300">得分: {score}</span>
+            <div className="text-2xl font-bold text-yellow-300">
+              得分: {score}
+            </div>
           </div>
 
           <div className="relative bg-gradient-to-b from-purple-950 to-purple-900 w-full h-96 rounded-xl overflow-hidden">
             {enemies.map(enemy => (
               <div
                 key={enemy.id}
-                className="absolute"
+                className="absolute transition-transform"
                 style={{
                   left: `${enemy.x}px`,
-                  top: `${enemy.y}px`
+                  top: `${enemy.y}px`,
+                  transform: 'translate(-50%, -50%)'
                 }}
               >
                 <EnemySprite type={enemy.type} />
               </div>
             ))}
-            
+
             {bullets.map(bullet => (
               <div
                 key={bullet.id}
                 className="absolute"
                 style={{
                   left: `${bullet.x}px`,
-                  top: `${bullet.y}px`
+                  top: `${bullet.y}px`,
+                  transform: `rotate(${Math.atan2(bullet.dy, bullet.dx) * 180 / Math.PI + 90}deg)`
                 }}
               >
-                <WaterDropSprite />
+                <SpitSprite />
               </div>
             ))}
 
@@ -316,7 +347,7 @@ const AlpacaGame: React.FC = () => {
                 }}
               />
             ))}
-            
+
             <div 
               className="absolute transition-all duration-100"
               style={{
@@ -325,20 +356,22 @@ const AlpacaGame: React.FC = () => {
                 transform: `rotate(${rotation}deg)`
               }}
             >
-              <PlayerSprite />
+              <PixelAlpaca />
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-purple-900 to-purple-800 text-white p-4 rounded-xl">
-            <div className="flex justify-between items-center">
-              <span>WASD：移动和瞄准</span>
-              <span>空格：发射水滴</span>
-            </div>
-          </div>
+          <Card className="bg-gradient-to-r from-purple-900 to-purple-800 text-white">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center">
+                <span>WASD：移动和瞄准</span>
+                <span>空格：发射唾液</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
   );
 };
 
-export default AlpacaGame;
+export default TankBattle;
